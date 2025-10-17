@@ -1,0 +1,10 @@
+# requirements.txt
+# Core dependencies only for now
+#numpy==1.24.3
+#pandas==1.5.3
+sqlalchemy==2.0.23
+#psycopg2-binary==2.9.9
+streamlit==1.28.0
+python-dotenv==1.0.0
+pytz==2023.3
+tqdm==4.66.1
