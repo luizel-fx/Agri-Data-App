@@ -20,14 +20,36 @@ def market_year_flag(exp_year, exp_month):
     if (exp_month >= my_beg):
         return f'{exp_year}/{str(exp_year+1)[-2:]}'
     elif (exp_month <= my_end):
+
         return f'{exp_year-1}/{str(exp_year)[-2:]}'
 
 
 def tv_scrapping(symbol: str, expire_months: list, init_year: int, lookback: int):
     """
         Scraps TradingView data using the load_asset_price function from price_loaders package.
-        
-        ... (Docstring truncated for brevity)
+
+        Args
+        -----
+        asset_name: str - Prefix string for the futures contracts of the underlying asset;
+        expire_months: list - A list with the expire months available;
+        init_year: int - Initial year;
+        period: int - How many days of each contracs will be storaged;
+        lookback: int - How many expire years will be storaged.
+
+        Returns
+        --------
+        pd.DataFrame with columns:
+            time: date;
+            expire_month: str;
+            expire_year: int;
+            open: float;
+            high: float;
+            low; float;
+            close; float
+
+            if it's a agricultural commodity asset, it'll also have a colums...
+                market-year: str.
+
     """
     dfs = []
     
@@ -41,13 +63,9 @@ def tv_scrapping(symbol: str, expire_months: list, init_year: int, lookback: int
                 ticker = f'{symbol}{m}{init_year-i}'
                 
                 try:
-                    # In a real scenario, 'lookback' in load_asset_price might refer to 
-                    # the number of days, but the function signature doesn't specify.
-                    # Assuming the original code's intent for now.
                     df = load_asset_price(ticker, 10000, 'D', timezone = pytz.timezone("America/Sao_Paulo"))
                     
                     if df.empty: 
-                        # Use pbar.write instead of print to avoid interfering with the bar
                         pbar.write(f'No data for {ticker}')
                     else:
                         df['time'] = df['time'].apply(lambda x: datetime(x.year, x.month, x.day))
@@ -83,41 +101,3 @@ def database_save_data(symbols: list, tables_names: dict, futures_expire_months:
         tqdm.write(f"Saving data for {symbol} to table {tables_names[symbol].lower()}...")
         df.to_sql(name = tables_names[symbol].lower(), con = con, if_exists = 'replace', index=False)
         tqdm.write(f"Finished saving data for {symbol}.")
-
-
-if __name__ == '__main__':
-    load_dotenv()
-
-    # DATABASE CREDENTIALS
-    DB_USER = os.getenv("DB_USER")
-    DB_PASSWORD = os.getenv("DB_PASSWORD")
-
-    # VARIABLES
-    try:
-        lookback = int(os.getenv("historic_lookback"))
-    except (TypeError, ValueError):
-        # Handle case where environment variable is missing or not an integer
-        print("Error: 'historic_lookback' environment variable is missing or invalid. Using default lookback=5.")
-        lookback = 5
-        
-    expmonths = ['F', 'G', 'H', 'J', 'K', 'M', 'N', 'Q', 'U', 'V','X', 'Z']
-    tables_names = {
-        'ZC': 'CBOT_corn',
-        'CCM': 'B3_corn',
-        'ZS': 'CBOT_soybean',
-        'ZL': 'CBOT_soybean_oil',
-        'ZM': 'CBOT_soybean_meal',
-        'BGI': 'B3_live_cattle',
-        'ZQ': 'US_ZQ',
-        'DX': 'US_DXY',
-        'DI1': 'BR_DI1',
-        'DOL': 'BR_DOL'
-    }
-
-    # Execute the main function
-    database_save_data(
-        symbols = ['ZC', 'CCM', 'ZS', 'ZL', 'ZM', 'BGI'] + ['ZQ', 'DX', 'DI1', 'DOL'],
-        tables_names=tables_names,
-        futures_expire_months=expmonths,
-        historic_lookback=lookback
-    )
