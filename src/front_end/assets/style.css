@@ -1,0 +1,4 @@
+.dropdown-toggle::after {
+  vertical-align: middle !important;
+  margin-left: 0.4rem; /* controla a distância da seta */
+}
