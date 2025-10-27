@@ -2,3 +2,7 @@
   vertical-align: middle !important;
   margin-left: 0.4rem; /* controla a distância da seta */
 }
+
+.dropdown-menu {
+  --bs-dropdown-link-active-bg: #f5f5f6; /* Seu novo valor de cor */
+}
