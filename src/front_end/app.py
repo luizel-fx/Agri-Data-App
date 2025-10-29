@@ -4,14 +4,30 @@ from dash.dependencies import Input, Output, State
 import dash_bootstrap_components as dbc
 from components.navbar import navbar
 
-# SETTING THEME AND COSMETICS
+from ages.futures.spreads import make_cs_dashboard
+from pages.home import make_home
+
 THEME = [dbc.themes.LUX]
 app = dash.Dash(__name__, external_stylesheets=THEME)
 app.title = "Agrimensor"
 
-LOGO = "/assets/logo.png"
+server = app.server
+app.config.suppress_callback_exceptions = True
 
-app.layout = html.Div(children=[navbar()])
+app.layout = html.Div([
+    dcc.Location(id='url', refresh=False),
+    html.Div(id='page-content')
+])
 
 
-app.run()
+@app.callback(Output('page-content', 'children'),
+              [Input('url', 'pathname')])
+def display_page(pathname):
+    if pathname == '/':
+        return make_home()
+    if pathname == '/futures/spreads':
+        return make_cs_dashboard()
+
+
+if __name__ == '__main__':
+    app.run_server(debug=False)

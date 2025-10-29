@@ -83,8 +83,8 @@ SPOT_PAGES = {
 }
 
 FUT_PAGES = {
-    "Spreads": "/mercado-futuro/spreads",
-    "Ratios": "/mercado-futuro/ratios"
+    "Spreads": "/futures/spreads",
+    "Ratios": "/futures/ratios"
 }
 
 def home_link():
@@ -112,9 +112,9 @@ def navbar():
                                             [
                                                 #nav_item("Home", "/"),
                                                 home_link(),
-                                                drop_down_menu("Relatórios", REPORTS_PAGES, 'assets/reports_icon.png'),
-                                                drop_down_menu("Mercado físico", SPOT_PAGES, 'assets/spot_icon.png'),
-                                                drop_down_menu("Mercado futuro", FUT_PAGES, 'assets/fut_icon.png')
+                                                drop_down_menu("Relatórios", REPORTS_PAGES, '/assets/reports_icon.png'),
+                                                drop_down_menu("Mercado físico", SPOT_PAGES, '/assets/spot_icon.png'),
+                                                drop_down_menu("Mercado futuro", FUT_PAGES, '/assets/fut_icon.png')
                                             ],
                                             style={"display": 'flex'}
                                         )

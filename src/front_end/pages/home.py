@@ -1,9 +1,10 @@
 import dash
 from dash import html
+from components.navbar import navbar
 
-dash.register_page(__name__, path='/')
+def make_home():
+    layout = html.Div([
+        navbar()
+    ])
 
-layout = html.Div([
-    html.H1('This is our Home page'),
-    html.Div('This is our Home page content.'),
-])
+    return layout
