@@ -11,7 +11,21 @@ def date_adjustment(df, i):
     df['time'] = df['time'].apply(lambda x: datetime(x.year + i, x.month, x.day))
     return df
 
+def cs_pair_load(con, symbol, long_exp_month, short_exp_month, long_exp_year, short_exp_year):
+    long_ticker = data_loader(con = con, symbol = symbol, exp_month=long_exp_month, exp_year=long_exp_year)
+    short_ticker = data_loader(con = con, symbol = symbol, exp_month=short_exp_month, exp_year=short_exp_year)
+
+    long_suffix = f'_{long_exp_month}{long_exp_year}'
+    short_suffix = f'_{short_exp_month}{short_exp_year}'
+    
+    merged_spread_df = long_ticker.merge(short_ticker, how = 'left', on = 'time', suffixes=(long_suffix, short_suffix))
+    merged_spread_df['spread'] = merged_spread_df[f'close{long_suffix}'] - merged_spread_df[f'close{short_suffix}']
+    merged_spread_df['spread_pct'] = merged_spread_df['spread']/merged_spread_df[f'close{long_suffix}']
+
+    return merged_spread_df
+    
 def calendar_spread_df(con, symbol, long_exp_month, short_exp_month, long_exp_year, short_exp_year, hist_period):
+    dfs = []
     for i in range(hist_period):
         long_ticker = data_loader(con = con, symbol = symbol, exp_month=long_exp_month, exp_year=long_exp_year-i)
         long_ticker = date_adjustment(long_ticker, i)[['time', 'close']]
@@ -19,23 +33,14 @@ def calendar_spread_df(con, symbol, long_exp_month, short_exp_month, long_exp_ye
         short_ticker = data_loader(con = con, symbol = symbol, exp_month=short_exp_month, exp_year=short_exp_year-i)
         short_ticker = date_adjustment(short_ticker, i)[['time', 'close']]
 
-        long_suffix = f'_{long_exp_month}{long_exp_year-i}'
-        short_suffix = f'_{short_exp_month}{short_exp_year-i}'
-
-        col_name = f'{long_exp_month}{long_exp_year-i} - {short_exp_month}{short_exp_year-i}'
-        if i == 0:
-            # First iteration - create the base dataframe
-            merged_spread_df = long_ticker.merge(short_ticker, how = 'left', on = 'time', suffixes=(long_suffix, short_suffix))
-            merged_spread_df[col_name] = merged_spread_df[f'close{long_suffix}'] - merged_spread_df[f'close{short_suffix}']
-            merged_spread_df = merged_spread_df[['time', col_name]]
-        else:
-            # Subsequent iterations - merge with existing dataframe
-            spread_df = long_ticker.merge(short_ticker, how = 'left', on = 'time', suffixes=(long_suffix, short_suffix))
-            spread_df[col_name] = spread_df[f'close{long_suffix}'] - spread_df[f'close{short_suffix}']
-            spread_df = spread_df[['time', col_name]]
-            merged_spread_df = merged_spread_df.merge(spread_df, on = 'time', how = 'outer')
+        pair = f'{long_exp_month}{long_exp_year-i} - {short_exp_month}{short_exp_year-i}'
+        # First iteration - create the base dataframe
+        merged_spread_df = cs_pair_load(con, symbol, long_exp_month, short_exp_month, long_exp_year-i, short_exp_year-i)
+        merged_spread_df = date_adjustment(merged_spread_df, i)
+        merged_spread_df['pair'] = pair
+        dfs.append(merged_spread_df[['time', 'spread', 'pair']])
     
-    return merged_spread_df
+    return pd.concat(dfs).pivot_table(values='spread', index='time', columns='pair')
 
 def min_max_scaler(serie):
     min = serie.min()
@@ -126,13 +131,26 @@ def cs_coint_model(con, symbol, long_exp_month, short_exp_month, long_exp_year, 
         
         now_resid = now_short_close.values - now_y_pred
     
-    #plt.scatter(x = now_input_tensor, y = now_short_close.values)
-    plt.scatter(x = test_input, y = test_data['normshort'].values)
-    plt.show()
+    return now_resid
+
+
+
+def di_spread_pct_data(con, symbol, long_exp_month, short_exp_month, long_exp_year, short_exp_year, hist_period):
+    concat = []
+    for i in range(0,hist_period):
+        spread = cs_pair_load(con, symbol, long_exp_month, short_exp_month, long_exp_year-i, short_exp_year-i)[['time', 'spread_pct']]
+        di_data = data_loader(con = con, symbol = 'DI1', exp_month=short_exp_month, exp_year=short_exp_year-i)[['time', 'close']]
+
+        joint_df = spread.merge(di_data, on = 'time', how = 'inner')
+        concat.append(joint_df)
+    
+    return pd.concat(concat)
+
+def di_spread_pct_model(con, symbol, long_exp_month, short_exp_month, long_exp_year, short_exp_year, hist_period):
+    pass
 
 if __name__ == '__main__':
     from dotenv import load_dotenv
-
 
     import os
     import sys
@@ -147,4 +165,9 @@ if __name__ == '__main__':
     DB_PASSWORD = os.getenv("DB_PASSWORD")
 
     con = db_connector(DB_USER, DB_PASSWORD)
-    print(cs_coint_model(con, 'CCM', 'F', 'K', 2026, 2026, 5))
+    import matplotlib.pyplot as plt
+
+    df = di_spread_pct_data(con, 'CCM', 'H', 'K', 2026, 2026, 5).dropna()
+
+    plt.scatter(x = df['close'], y = df['spread_pct'])
+    plt.show()
